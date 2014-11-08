@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="
+	  http://www.springframework.org/schema/beans 
+	  http://www.springframework.org/schema/beans/spring-beans.xsd
+	  http://www.springframework.org/schema/aop 
+	  http://www.springframework.org/schema/aop/spring-aop.xsd
+	  http://www.springframework.org/schema/tx
+      http://www.springframework.org/schema/tx/spring-tx.xsd
+	  http://www.springframework.org/schema/context
+      http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<import resource="mvc-config.xml"/>
+	<context:component-scan base-package="simples">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+	</context:component-scan>
+	
+
+	<context:property-placeholder location="classpath:dbConfig.properties"/>
+	<!-- database config -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+		<property name="driverClass" value="${driverClass}"  />
+		<property name="jdbcUrl" value="${jdbcUrl}" />
+		<property name="user" value="${user}" />
+		<property name="password" value="${password}" />
+		<property name="initialPoolSize" value="${initialPoolSize}" />
+		<property name="minPoolSize" value="${minPoolSize}" />
+		<property name="maxPoolSize" value="${maxPoolSize}" />
+		<property name="maxStatements" value="${maxStatements}" />
+	</bean>
+	
+	<!-- hibernate sessionFactory	-->
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="packagesToScan">
+				<value>simples.bean</value>
+		</property>
+		<property name="configLocation">
+			<value>classpath:hibernate.cfg.xml</value>
+		</property>
+	</bean>
+	
+	<!-- hibernate's transactionManager 	-->
+	<bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+	<!-- 配置通知, 那些方法需要切入什么类型的事务 	-->
+	 <tx:advice id="advice" transaction-manager="transactionManager">
+	 	<tx:attributes>
+	 		<tx:method name="save*" propagation="REQUIRED" />
+	 		<tx:method name="update*" propagation="REQUIRED"/>
+	 		<tx:method name="delete*" propagation="REQUIRED"/>
+	 		<tx:method name="*" propagation="SUPPORTS" read-only="true"/>
+	 	</tx:attributes>
+	 </tx:advice>
+ 
+	 <!-- 配置切面表达式, 并且让 tx与切面表达式合二为一
+	  -->
+	 <aop:config>
+	 	<aop:pointcut expression="execution(* simples.service.impl.*.*(..))" id="pointcut" />
+	 	<aop:advisor advice-ref="advice" pointcut-ref="pointcut"/>
+	 </aop:config>
+	
+	 <!-- 获取properties配置文件的工具类,此方式获取仅仅支持注解注入,不支持xml	
+	 <bean id="serverConfig" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+	 	<property name="locations" >
+	 		<array>
+	 			<value>classpath:serverConfig.properties</value>
+	 		</array>
+	 	</property>
+	 </bean>
+	  --> 
+	 
+</beans>
